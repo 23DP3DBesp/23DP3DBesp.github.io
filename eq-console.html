@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>W211 EQ Console</title>
+<style>
+  :root{
+    --bg: #0a0f14;
+    --panel: #0f161d;
+    --panel-raised: #131b23;
+    --line: #1e2a33;
+    --amber: #ff8a1e;
+    --amber-dim: #7a4a1a;
+    --red: #ff3b30;
+    --green: #3ddc84;
+    --text: #cdd9e0;
+    --text-dim: #6b7d88;
+    --mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; background: var(--bg); color: var(--text); font-family: var(--mono); height:100%; overscroll-behavior: none; }
+  body{ display:flex; flex-direction:column; min-height:100vh;
+    background: radial-gradient(1200px 600px at 50% -10%, #14202a 0%, transparent 60%), var(--bg); }
+
+  header{ padding: 18px 16px 10px; display:flex; align-items:baseline; justify-content:space-between; border-bottom: 1px solid var(--line); }
+  .brand{ font-size: 13px; letter-spacing: 3px; color: var(--text-dim); text-transform:uppercase; }
+  .brand b{ color: var(--amber); }
+  .model{ font-size: 11px; color: var(--text-dim); letter-spacing:1px; }
+
+  nav.tabs{ display:flex; gap:2px; padding: 10px 16px 0; }
+  nav.tabs button{ flex:1; background: var(--panel); border: 1px solid var(--line); border-bottom:none;
+    color: var(--text-dim); font-family: var(--mono); font-size: 12px; letter-spacing:1px;
+    padding: 10px 6px; cursor:pointer; text-transform:uppercase; border-radius: 6px 6px 0 0; }
+  nav.tabs button.active{ color: var(--amber); background: var(--panel-raised); border-color: var(--amber-dim); }
+
+  main{ flex:1; padding: 0 16px 16px; }
+  .panel{ background: var(--panel-raised); border: 1px solid var(--line); border-top:none; border-radius: 0 0 10px 10px; padding: 16px; }
+
+  .source-row{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .source-row input[type=text]{ flex:1; min-width:160px; background: var(--panel); border:1px solid var(--line); color: var(--text);
+    font-family: var(--mono); font-size: 12px; padding: 10px 12px; border-radius: 6px; }
+  .btn{ background: var(--panel); border:1px solid var(--line); color: var(--text);
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.5px; text-transform:uppercase;
+    padding: 10px 14px; border-radius: 6px; cursor:pointer; white-space:nowrap; }
+  .btn:hover{ border-color: var(--amber-dim); color: var(--amber); }
+  .btn.primary{ border-color: var(--amber); color: var(--amber); }
+  .btn.danger:hover{ border-color: var(--red); color: var(--red); }
+  .btn.macro{ border-color: var(--red); color: var(--red); }
+  .btn.macro.street{ border-color: #3d9bdc; color: #3d9bdc; }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  input[type=file]{ display:none; }
+
+  .now-playing{ font-size:11px; color: var(--text-dim); margin-bottom:14px; min-height:14px; display:flex; justify-content:space-between; }
+  .now-playing span.time{ color: var(--amber); }
+
+  .console{ display:flex; gap:16px; align-items:stretch; }
+  .rail{ display:flex; flex-direction:column; gap:8px; width:82px; flex-shrink:0; }
+  .rail-btn{ background: var(--panel); border:1px solid var(--line); color: var(--text-dim);
+    font-size: 9.5px; letter-spacing: 0.5px; text-transform:uppercase; text-align:center;
+    padding: 8px 4px; border-radius: 6px; cursor:pointer; line-height:1.3; }
+  .rail-btn.active{ border-color: var(--green); color: var(--green); box-shadow: 0 0 10px rgba(61,220,132,.25) inset; }
+  .rail-btn.bass.active{ border-color: var(--red); color: var(--red); box-shadow: 0 0 10px rgba(255,59,48,.3) inset; }
+  .rail-btn.mono.active{ border-color: #3d9bdc; color: #3d9bdc; box-shadow: 0 0 10px rgba(61,155,220,.3) inset; }
+  .rail-btn.limiter.active{ border-color: var(--amber); color: var(--amber); }
+
+  .mini-slider-block{ display:flex; flex-direction:column; align-items:center; gap:2px; padding: 4px 0; }
+  .mini-slider-block label{ font-size:9px; color: var(--text-dim); letter-spacing:0.5px; text-transform:uppercase; }
+  .mini-slider-block input[type=range]{ width: 100%; accent-color: #3d9bdc; height: 18px; }
+
+  .vol-block{ display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
+  .vol-label{ font-size:9.5px; letter-spacing:1px; color: var(--text-dim); text-transform:uppercase; }
+  .vol-value{ font-size: 12px; color: var(--amber); font-weight:bold; }
+  input[type=range].vertical{ writing-mode: vertical-lr; direction: rtl; width: 20px; height: 130px; -webkit-appearance: slider-vertical; accent-color: var(--amber); }
+  .vol-block.ceiling .vol-value{ color: #3d9bdc; }
+  .vol-block.ceiling input[type=range].vertical{ accent-color: #3d9bdc; }
+
+  .eq-wrap{ flex:1; position:relative; min-width:0; }
+  canvas#eqCanvas{ width:100%; height: 290px; display:block; touch-action:none; border-radius:8px; }
+  canvas#specCanvas{ width:100%; height:44px; display:block; border-radius:8px; margin-top:8px; }
+
+  .meter-row{ display:flex; align-items:center; gap:8px; margin-top:6px; }
+  .meter-bar{ flex:1; height: 10px; background: var(--panel); border-radius: 5px; overflow:hidden; position:relative; border:1px solid var(--line); }
+  .meter-fill{ height:100%; width:0%; background: linear-gradient(90deg, var(--green), var(--amber) 75%, var(--red) 92%); transition: width 0.05s linear; }
+  .meter-label{ font-size: 10px; color: var(--text-dim); width: 64px; text-align:right; }
+  .clip-flag{ font-size: 10px; color: var(--red); font-weight:bold; opacity:0; transition: opacity .1s; letter-spacing:1px; }
+  .clip-flag.show{ opacity:1; }
+
+  .band-select-row{ display:flex; align-items:center; gap:10px; margin-top:14px; padding: 10px 12px; background: var(--panel); border:1px solid var(--line); border-radius:8px; flex-wrap:wrap; }
+  .band-select-row .bs-label{ font-size:11px; color: var(--amber); min-width: 110px; }
+  .band-select-row .bs-q{ flex:1; min-width:120px; display:flex; align-items:center; gap:8px; }
+  .band-select-row .bs-q input[type=range]{ flex:1; accent-color: var(--amber); }
+  .band-select-row .bs-q span{ font-size:11px; color: var(--text-dim); width:34px; }
+
+  .macro-row{ display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  .macro-row .btn{ flex:1; min-width: 150px; }
+
+  .preset-row{ display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+  .preset-row input[type=text]{ flex:1; min-width:120px; background: var(--panel); border:1px solid var(--line); color: var(--text);
+    font-family: var(--mono); font-size: 12px; padding: 10px 12px; border-radius: 6px; }
+  select#presetSelect{ background: var(--panel); border:1px solid var(--line); color: var(--text);
+    font-family: var(--mono); font-size: 12px; padding: 10px; border-radius: 6px; max-width: 140px; }
+
+  .footer-actions{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .footer-actions .btn{ flex:1; min-width:120px; }
+
+  .tab-content{ display:none; }
+  .tab-content.active{ display:block; }
+  .guide p, .guide li{ font-size: 13px; line-height:1.6; color: var(--text); }
+  .guide h3{ color: var(--amber); font-size: 13px; text-transform:uppercase; letter-spacing:1px; margin-top:18px;}
+  .guide code{ background: var(--panel); padding:2px 6px; border-radius:4px; color: var(--green); }
+
+  .active-tabs-list{ font-size:12px; color: var(--text-dim); }
+  .active-tabs-row{ display:flex; justify-content:space-between; align-items:center; padding: 12px; border:1px solid var(--line); border-radius:6px; margin-bottom:8px; background: var(--panel); }
+  .active-tabs-row .name{ color: var(--text); }
+  .active-tabs-row .stat-pill{ color: var(--green); font-size:11px; }
+
+  .pro-box{ border: 1px dashed var(--amber-dim); border-radius: 8px; padding: 18px; text-align:center; }
+  .pro-box h3{ color: var(--amber); margin: 0 0 8px; }
+  .pro-box p{ color: var(--text-dim); font-size: 13px; margin: 0 0 14px; }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background: var(--line); border-radius:4px; }
+
+  @media (max-width: 560px){
+    .console{ flex-direction: column; }
+    .rail{ flex-direction:row; flex-wrap:wrap; width:100%; }
+    .rail-btn{ flex: 1 1 40%; }
+    .vol-block{ flex-direction:row; flex: 1 1 100%; justify-content:space-between; }
+    input[type=range].vertical{ height: 34px; width: 100%; writing-mode: horizontal-tb; -webkit-appearance:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><b>W211</b> EQ CONSOLE</div>
+  <div class="model">no-limit equalizer &middot; drive / limiter / mono-bass</div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-tab="controls">Controls</button>
+  <button data-tab="guide">Guide</button>
+  <button data-tab="tabs">Active Tabs</button>
+  <button data-tab="pro">Pro</button>
+</nav>
+
+<main>
+  <div class="panel">
+
+    <div class="tab-content active" id="tab-controls">
+
+      <div class="source-row">
+        <input type="text" id="urlInput" placeholder="Прямая ссылка на аудио (.mp3/.wav) или загрузи файл">
+        <button class="btn" id="loadUrlBtn">Load URL</button>
+        <button class="btn" id="pickFileBtn">Upload File</button>
+        <input type="file" id="fileInput" accept="audio/*">
+      </div>
+
+      <div class="now-playing">
+        <span id="trackName">Источник не выбран</span>
+        <span class="time" id="trackTime">--:-- / --:--</span>
+      </div>
+
+      <div class="source-row" style="margin-bottom:16px;">
+        <button class="btn primary" id="playBtn" disabled>▶ Play</button>
+        <button class="btn" id="stopBtn" disabled>■ Stop This Tab</button>
+      </div>
+
+      <div class="console">
+        <div class="rail">
+          <div class="rail-btn active" id="specToggle">Spectrum<br>Visualizer</div>
+          <div class="rail-btn bass" id="bassToggle">Bass<br>Boost</div>
+          <div class="rail-btn mono" id="monoToggle">Mono<br>Bass Sum</div>
+          <div class="mini-slider-block" id="crossoverBlock" style="display:none;">
+            <label>Crossover <span id="crossoverValue">120Hz</span></label>
+            <input type="range" id="crossoverSlider" min="60" max="300" value="120" step="5">
+          </div>
+          <div class="rail-btn limiter active" id="limiterToggle">Safety<br>Limiter</div>
+
+          <div class="vol-block">
+            <div class="vol-label">Drive</div>
+            <div class="vol-value" id="driveValue">100%</div>
+            <input type="range" class="vertical" id="driveSlider" min="0" max="600" value="100" step="1">
+          </div>
+          <div class="vol-block ceiling">
+            <div class="vol-label">Ceiling</div>
+            <div class="vol-value" id="ceilingValue">-1dB</div>
+            <input type="range" class="vertical" id="ceilingSlider" min="-12" max="0" value="-1" step="0.5">
+          </div>
+        </div>
+
+        <div class="eq-wrap">
+          <canvas id="eqCanvas"></canvas>
+          <canvas id="specCanvas"></canvas>
+          <div class="meter-row">
+            <span class="meter-label" id="meterLabel">-∞ dB</span>
+            <div class="meter-bar"><div class="meter-fill" id="meterFill"></div></div>
+            <span class="clip-flag" id="clipFlag">CLIP</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="band-select-row">
+        <span class="bs-label" id="bsLabel">Полоса: — тапни точку</span>
+        <div class="bs-q">
+          <span>Q</span>
+          <input type="range" id="qSlider" min="0.1" max="10" step="0.1" value="1" disabled>
+          <span id="qValue">1.0</span>
+        </div>
+      </div>
+
+      <div class="macro-row">
+        <button class="btn macro" id="maxLoudBtn">🔊 Max Loudness / Rattle</button>
+        <button class="btn macro street" id="streetBtn">📢 Street Throw</button>
+      </div>
+
+      <div class="preset-row">
+        <input type="text" id="presetName" placeholder="Preset name">
+        <button class="btn" id="savePresetBtn">+ Save Preset</button>
+        <select id="presetSelect"><option value="">— Presets —</option></select>
+        <button class="btn danger" id="deletePresetBtn">- Delete</button>
+      </div>
+
+      <div class="footer-actions">
+        <button class="btn" id="resetBtn">Reset Filters</button>
+      </div>
+    </div>
+
+    <div class="tab-content guide" id="tab-guide">
+      <h3>Цепочка сигнала</h3>
+      <p>Источник → 13 полос EQ (±25 дБ, регулируемая ширина Q на каждой) → Bass Boost (low-shelf) → <b>Mono Bass Sum</b> (опционально) → <b>Drive</b> (пред-усиление до 600%) → мягкий сатуратор → <b>Limiter</b> с настраиваемым Ceiling → выход.</p>
+      <h3>Drive vs Ceiling</h3>
+      <ul>
+        <li><b>Drive</b> — насколько сильно сигнал бьёт во вход лимитера/сатуратора. Это и есть управление "громкостью" — чем выше, тем громче и тем сильнее насыщение (более "плотный", агрессивный звук).</li>
+        <li><b>Ceiling</b> — потолок, выше которого лимитер не пускает сигнал. Ниже потолок = безопаснее для штатной акустики, но тише субъективно.</li>
+        <li><b>Safety Limiter</b> выкл — лимитер работает мягче (компрессия вместо жёсткого потолка), звук громче и "грязнее". Так делают в машинах ради субъективной громкости, но это повышает риск для динамиков — на свой риск.</li>
+      </ul>
+      <h3>Mono Bass Sum</h3>
+      <p>Ниже частоты кроссовера (по умолчанию 120 Гц) левый и правый канал суммируются в один и подаются в оба — классический приём, чтобы низкие частоты били плотнее и были слышны дальше на улице, даже на паре штатных динамиков без отдельного сабвуфера.</p>
+      <h3>Q (ширина полосы)</h3>
+      <p>Тапни/перетащи точку на графике — она станет выбранной, внизу появится слайдер Q. Низкий Q (0.1-0.5) — широкий, "лопатой", высокий Q (5-10) — узкий хирургический вырез/подъём.</p>
+      <h3>Важное ограничение</h3>
+      <p>Прямые ссылки на треки в Spotify и SoundCloud здесь не подключаются — оба сервиса не отдают сырой аудио-поток в браузер (DRM у Spotify, ограничения потокового API у SoundCloud). Работает с загруженными файлами и прямыми ссылками на аудио.</p>
+    </div>
+
+    <div class="tab-content" id="tab-tabs">
+      <div class="active-tabs-list">
+        <p style="margin-top:0;">В веб-версии обрабатывается один локальный источник звука за раз. Мультивкладочный захват — функция расширения Chrome (Pro).</p>
+        <div class="active-tabs-row">
+          <span class="name" id="activeTabName">— нет активного источника —</span>
+          <span class="stat-pill" id="activeTabStat">idle</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-pro">
+      <div class="pro-box">
+        <h3>Pro: захват любой вкладки</h3>
+        <p>Отдельное Chrome-расширение: захват звука вкладки через <code>chrome.tabCapture</code>, та же цепочка EQ/Drive/Limiter применяется прямо к Spotify/SoundCloud/YouTube во время прослушивания.</p>
+        <button class="btn primary" disabled>Скоро</button>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+(function(){
+  const BANDS = [5,10,20,40,80,160,320,640,1280,2560,5120,10240,20480];
+  let gains = BANDS.map(()=>0);
+  let qs = BANDS.map(()=>1);
+  let selectedIndex = -1;
+  let bassBoostOn = false;
+  let monoBassOn = false;
+  let limiterOn = true;
+  let specOn = true;
+  let crossoverFreq = 120;
+
+  let audioCtx=null, sourceNode=null, filters=[], bassFilter=null;
+  let driveGain=null, shaper=null, limiterNode=null, outTrim=null, analyser=null;
+  let splitter=null, hpL=null, hpR=null, lpL=null, lpR=null, monoSum=null, merger=null;
+  let mediaEl = new Audio();
+  mediaEl.crossOrigin = "anonymous";
+  let rafId = null;
+
+  document.querySelectorAll('nav.tabs button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  function makeSaturationCurve(){
+    const n = 1024;
+    const curve = new Float32Array(n);
+    for(let i=0;i<n;i++){
+      const x = (i/(n-1))*2-1;
+      curve[i] = Math.tanh(x*1.5);
+    }
+    return curve;
+  }
+
+  function ensureGraph(){
+    if(audioCtx) return;
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    sourceNode = audioCtx.createMediaElementSource(mediaEl);
+
+    filters = BANDS.map((freq,i)=>{
+      const f = audioCtx.createBiquadFilter();
+      f.type = (i===0) ? 'lowshelf' : (i===BANDS.length-1) ? 'highshelf' : 'peaking';
+      f.frequency.value = freq;
+      f.Q.value = 1;
+      f.gain.value = 0;
+      return f;
+    });
+
+    bassFilter = audioCtx.createBiquadFilter();
+    bassFilter.type = 'lowshelf';
+    bassFilter.frequency.value = 120;
+    bassFilter.gain.value = 0;
+
+    driveGain = audioCtx.createGain();
+    driveGain.gain.value = 1;
+
+    shaper = audioCtx.createWaveShaper();
+    shaper.curve = makeSaturationCurve();
+    shaper.oversample = '4x';
+
+    limiterNode = audioCtx.createDynamicsCompressor();
+    limiterNode.threshold.value = -1;
+    limiterNode.knee.value = 4;
+    limiterNode.ratio.value = 20;
+    limiterNode.attack.value = 0.001;
+    limiterNode.release.value = 0.1;
+
+    outTrim = audioCtx.createGain();
+    outTrim.gain.value = 1;
+
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.6;
+
+    // mono-bass subgraph nodes (created but only wired when toggled)
+    splitter = audioCtx.createChannelSplitter(2);
+    hpL = audioCtx.createBiquadFilter(); hpL.type='highpass'; hpL.frequency.value = crossoverFreq;
+    hpR = audioCtx.createBiquadFilter(); hpR.type='highpass'; hpR.frequency.value = crossoverFreq;
+    lpL = audioCtx.createBiquadFilter(); lpL.type='lowpass'; lpL.frequency.value = crossoverFreq;
+    lpR = audioCtx.createBiquadFilter(); lpR.type='lowpass'; lpR.frequency.value = crossoverFreq;
+    monoSum = audioCtx.createGain(); monoSum.gain.value = 0.5;
+    merger = audioCtx.createChannelMerger(2);
+
+    let chain = sourceNode;
+    filters.forEach(f=>{ chain.connect(f); chain = f; });
+    chain.connect(bassFilter);
+    bassFilter.connect(driveGain);
+
+    wireMonoStage();
+
+    shaper.connect(limiterNode);
+    limiterNode.connect(outTrim);
+    outTrim.connect(analyser);
+    analyser.connect(audioCtx.destination);
+  }
+
+  function disconnectSafe(node){ try{ node.disconnect(); }catch(e){} }
+
+  function wireMonoStage(){
+    disconnectSafe(driveGain);
+    disconnectSafe(splitter); disconnectSafe(hpL); disconnectSafe(hpR); disconnectSafe(lpL); disconnectSafe(lpR); disconnectSafe(monoSum); disconnectSafe(merger);
+
+    if(monoBassOn){
+      driveGain.connect(splitter);
+      splitter.connect(hpL, 0); splitter.connect(hpR, 1);
+      splitter.connect(lpL, 0); splitter.connect(lpR, 1);
+      lpL.connect(monoSum); lpR.connect(monoSum);
+      hpL.connect(merger, 0, 0); monoSum.connect(merger, 0, 0);
+      hpR.connect(merger, 0, 1); monoSum.connect(merger, 0, 1);
+      merger.connect(shaper);
+    } else {
+      driveGain.connect(shaper);
+    }
+  }
+
+  function applyGains(){ if(!filters.length) return; filters.forEach((f,i)=>{ f.gain.value = gains[i]; f.Q.value = qs[i]; }); }
+  function applyBass(){ if(!bassFilter) return; bassFilter.gain.value = bassBoostOn ? 9 : 0; }
+  function applyDrive(pct){ if(!driveGain) return; driveGain.gain.value = pct/100; }
+  function applyCeiling(db){ if(!limiterNode) return; limiterNode.threshold.value = db; }
+  function applyLimiterMode(){
+    if(!limiterNode) return;
+    limiterNode.ratio.value = limiterOn ? 20 : 4;
+    limiterNode.attack.value = limiterOn ? 0.001 : 0.01;
+    limiterNode.release.value = limiterOn ? 0.1 : 0.4;
+  }
+  function applyCrossover(f){
+    crossoverFreq = f;
+    if(hpL){ hpL.frequency.value=f; hpR.frequency.value=f; lpL.frequency.value=f; lpR.frequency.value=f; }
+  }
+
+  const trackName = document.getElementById('trackName');
+  const trackTime = document.getElementById('trackTime');
+  const playBtn = document.getElementById('playBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const activeTabName = document.getElementById('activeTabName');
+  const activeTabStat = document.getElementById('activeTabStat');
+
+  function setSource(label){ trackName.textContent = label; activeTabName.textContent = label; playBtn.disabled=false; stopBtn.disabled=false; }
+
+  document.getElementById('pickFileBtn').addEventListener('click', ()=> document.getElementById('fileInput').click());
+  document.getElementById('fileInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    ensureGraph(); if(audioCtx.state==='suspended') audioCtx.resume();
+    mediaEl.src = URL.createObjectURL(file); setSource(file.name); mediaEl.play();
+  });
+
+  document.getElementById('loadUrlBtn').addEventListener('click', ()=>{
+    const url = document.getElementById('urlInput').value.trim(); if(!url) return;
+    if(/spotify\.com|soundcloud\.com/i.test(url)){
+      trackName.textContent = 'Прямой стрим Spotify/SoundCloud недоступен в браузере (DRM/CORS) — используй прямую ссылку на аудиофайл';
+      return;
+    }
+    ensureGraph(); if(audioCtx.state==='suspended') audioCtx.resume();
+    mediaEl.src = url; setSource(url.split('/').pop() || url);
+    mediaEl.play().catch(()=>{ trackName.textContent = 'Не удалось загрузить — источник блокирует CORS'; });
+  });
+
+  let playing = false;
+  playBtn.addEventListener('click', ()=>{
+    if(!audioCtx) return;
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    if(playing){ mediaEl.pause(); playBtn.textContent='▶ Play'; } else { mediaEl.play(); playBtn.textContent='⏸ Pause'; }
+    playing = !playing;
+  });
+  stopBtn.addEventListener('click', ()=>{
+    mediaEl.pause(); mediaEl.currentTime = 0; playing=false; playBtn.textContent='▶ Play'; activeTabStat.textContent='idle';
+  });
+  mediaEl.addEventListener('timeupdate', ()=>{
+    const fmt = s => { if(!isFinite(s)) return '--:--'; const m=Math.floor(s/60); const sec=Math.floor(s%60); return m+':'+String(sec).padStart(2,'0'); };
+    trackTime.textContent = fmt(mediaEl.currentTime) + ' / ' + fmt(mediaEl.duration);
+    activeTabStat.textContent = mediaEl.paused ? 'paused' : 'playing';
+  });
+  mediaEl.addEventListener('play', ()=>{ activeTabStat.textContent='playing'; playBtn.textContent='⏸ Pause'; playing=true; });
+  mediaEl.addEventListener('pause', ()=>{ activeTabStat.textContent='paused'; });
+
+  // ---------- EQ canvas ----------
+  const eqCanvas = document.getElementById('eqCanvas');
+  const eqCtx = eqCanvas.getContext('2d');
+  let dragIndex = -1;
+
+  function resizeCanvases(){
+    const rect = eqCanvas.getBoundingClientRect();
+    eqCanvas.width = rect.width * devicePixelRatio; eqCanvas.height = rect.height * devicePixelRatio;
+    const sc = document.getElementById('specCanvas');
+    const r2 = sc.getBoundingClientRect();
+    sc.width = r2.width * devicePixelRatio; sc.height = r2.height * devicePixelRatio;
+    drawEQ();
+  }
+  function bandX(i){ const pad = 46*devicePixelRatio; const w = eqCanvas.width - pad*2; return pad + (w * i/(BANDS.length-1)); }
+  function gainY(g){ const padTop=14*devicePixelRatio, padBottom=34*devicePixelRatio; const h=eqCanvas.height-padTop-padBottom; const t=(25-g)/50; return padTop+t*h; }
+  function yToGain(y){ const padTop=14*devicePixelRatio, padBottom=34*devicePixelRatio; const h=eqCanvas.height-padTop-padBottom; let t=(y-padTop)/h; t=Math.max(0,Math.min(1,t)); return Math.round((25-t*50)); }
+
+  function drawEQ(){
+    const w = eqCanvas.width, h = eqCanvas.height;
+    eqCtx.clearRect(0,0,w,h);
+    eqCtx.fillStyle = '#0d1319'; eqCtx.fillRect(0,0,w,h);
+    eqCtx.strokeStyle = 'rgba(255,255,255,0.06)'; eqCtx.lineWidth = 1;
+    for(let g=-25; g<=25; g+=5){
+      const y = gainY(g);
+      eqCtx.beginPath(); eqCtx.moveTo(0,y); eqCtx.lineTo(w,y); eqCtx.stroke();
+      eqCtx.fillStyle = g===0 ? 'rgba(255,138,30,0.7)' : 'rgba(255,255,255,0.3)';
+      eqCtx.font = (10*devicePixelRatio)+'px monospace';
+      eqCtx.fillText(g, 4*devicePixelRatio, y+3*devicePixelRatio);
+    }
+    eqCtx.strokeStyle = 'rgba(255,138,30,0.35)'; eqCtx.lineWidth = 1.5;
+    eqCtx.beginPath(); eqCtx.moveTo(0,gainY(0)); eqCtx.lineTo(w,gainY(0)); eqCtx.stroke();
+
+    eqCtx.fillStyle = 'rgba(255,255,255,0.35)'; eqCtx.font = (10*devicePixelRatio)+'px monospace';
+    BANDS.forEach((f,i)=>{
+      const x = bandX(i);
+      eqCtx.beginPath(); eqCtx.strokeStyle='rgba(255,255,255,0.08)'; eqCtx.moveTo(x,0); eqCtx.lineTo(x,h); eqCtx.stroke();
+      const label = f>=1000 ? (f/1000)+'k' : f;
+      eqCtx.save(); eqCtx.translate(x, h - 6*devicePixelRatio); eqCtx.textAlign='center'; eqCtx.fillText(label, 0, 0); eqCtx.restore();
+    });
+
+    eqCtx.strokeStyle = '#ff8a1e'; eqCtx.lineWidth = 2*devicePixelRatio;
+    eqCtx.beginPath();
+    BANDS.forEach((f,i)=>{ const x=bandX(i), y=gainY(gains[i]); if(i===0) eqCtx.moveTo(x,y); else eqCtx.lineTo(x,y); });
+    eqCtx.stroke();
+
+    BANDS.forEach((f,i)=>{
+      const x = bandX(i), y = gainY(gains[i]);
+      const isEdge = (i===0 || i===BANDS.length-1);
+      const isSel = i===selectedIndex;
+      eqCtx.beginPath();
+      eqCtx.arc(x,y, (isSel?8:6)*devicePixelRatio, 0, Math.PI*2);
+      eqCtx.fillStyle = isSel ? '#ff8a1e' : (isEdge ? '#ff3b30' : '#e8eef2');
+      eqCtx.fill();
+      eqCtx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.4)';
+      eqCtx.lineWidth = isSel ? 2*devicePixelRatio : 1;
+      eqCtx.stroke();
+    });
+  }
+
+  function pointerPos(e){
+    const rect = eqCanvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: (clientX-rect.left)*devicePixelRatio, y: (clientY-rect.top)*devicePixelRatio };
+  }
+  function nearestBand(x){ let best=0, bestDist=Infinity; BANDS.forEach((f,i)=>{ const d=Math.abs(bandX(i)-x); if(d<bestDist){bestDist=d; best=i;} }); return best; }
+
+  const bsLabel = document.getElementById('bsLabel');
+  const qSlider = document.getElementById('qSlider');
+  const qValue = document.getElementById('qValue');
+
+  function selectBand(i){
+    selectedIndex = i;
+    const f = BANDS[i];
+    const label = f>=1000 ? (f/1000)+'kHz' : f+'Hz';
+    bsLabel.textContent = 'Полоса: ' + label + ' · ' + (gains[i]>=0?'+':'') + gains[i] + 'dB';
+    qSlider.disabled = false;
+    qSlider.value = qs[i];
+    qValue.textContent = qs[i].toFixed(1);
+  }
+
+  function startDrag(e){
+    const p = pointerPos(e);
+    dragIndex = nearestBand(p.x);
+    gains[dragIndex] = yToGain(p.y);
+    selectBand(dragIndex);
+    applyGains(); drawEQ();
+    e.preventDefault();
+  }
+  function moveDrag(e){
+    if(dragIndex<0) return;
+    const p = pointerPos(e);
+    gains[dragIndex] = yToGain(p.y);
+    bsLabel.textContent = bsLabel.textContent.split(' · ')[0] + ' · ' + (gains[dragIndex]>=0?'+':'') + gains[dragIndex] + 'dB';
+    applyGains(); drawEQ();
+    e.preventDefault();
+  }
+  function endDrag(){ dragIndex=-1; }
+
+  eqCanvas.addEventListener('mousedown', startDrag);
+  window.addEventListener('mousemove', moveDrag);
+  window.addEventListener('mouseup', endDrag);
+  eqCanvas.addEventListener('touchstart', startDrag, {passive:false});
+  window.addEventListener('touchmove', moveDrag, {passive:false});
+  window.addEventListener('touchend', endDrag);
+  window.addEventListener('resize', resizeCanvases);
+
+  qSlider.addEventListener('input', ()=>{
+    if(selectedIndex<0) return;
+    qs[selectedIndex] = parseFloat(qSlider.value);
+    qValue.textContent = qs[selectedIndex].toFixed(1);
+    applyGains();
+  });
+
+  // ---------- spectrum + meter ----------
+  const specCanvas = document.getElementById('specCanvas');
+  const specCtx = specCanvas.getContext('2d');
+  const meterFill = document.getElementById('meterFill');
+  const meterLabel = document.getElementById('meterLabel');
+  const clipFlag = document.getElementById('clipFlag');
+  let clipTimeout = null;
+
+  function drawSpectrum(){
+    rafId = requestAnimationFrame(drawSpectrum);
+    const w = specCanvas.width, h = specCanvas.height;
+    specCtx.fillStyle = '#0d1319'; specCtx.fillRect(0,0,w,h);
+    if(!analyser){ meterFill.style.width='0%'; meterLabel.textContent='-∞ dB'; return; }
+
+    if(specOn){
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(data);
+      const barW = w/data.length;
+      for(let i=0;i<data.length;i++){
+        const v = data[i]/255; const barH = v*h;
+        specCtx.fillStyle = `rgba(255,${138 - v*40},30,${0.5+v*0.5})`;
+        specCtx.fillRect(i*barW, h-barH, barW*0.8, barH);
+      }
+    }
+
+    const timeData = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(timeData);
+    let peak = 0;
+    for(let i=0;i<timeData.length;i++){ const a = Math.abs(timeData[i]); if(a>peak) peak=a; }
+    const db = peak>0 ? 20*Math.log10(peak) : -Infinity;
+    const pct = Math.max(0, Math.min(100, (db+40)/40*100));
+    meterFill.style.width = pct+'%';
+    meterLabel.textContent = isFinite(db) ? db.toFixed(1)+' dB' : '-∞ dB';
+    if(peak > 0.985){
+      clipFlag.classList.add('show');
+      clearTimeout(clipTimeout);
+      clipTimeout = setTimeout(()=>clipFlag.classList.remove('show'), 400);
+    }
+  }
+
+  document.getElementById('specToggle').addEventListener('click', function(){ specOn=!specOn; this.classList.toggle('active', specOn); });
+  document.getElementById('bassToggle').addEventListener('click', function(){ bassBoostOn=!bassBoostOn; this.classList.toggle('active', bassBoostOn); ensureGraph(); applyBass(); });
+  document.getElementById('limiterToggle').addEventListener('click', function(){ limiterOn=!limiterOn; this.classList.toggle('active', limiterOn); ensureGraph(); applyLimiterMode(); });
+
+  const monoToggle = document.getElementById('monoToggle');
+  const crossoverBlock = document.getElementById('crossoverBlock');
+  monoToggle.addEventListener('click', function(){
+    monoBassOn = !monoBassOn;
+    this.classList.toggle('active', monoBassOn);
+    crossoverBlock.style.display = monoBassOn ? 'flex' : 'none';
+    ensureGraph(); wireMonoStage();
+  });
+  const crossoverSlider = document.getElementById('crossoverSlider');
+  const crossoverValue = document.getElementById('crossoverValue');
+  crossoverSlider.addEventListener('input', ()=>{
+    crossoverValue.textContent = crossoverSlider.value+'Hz';
+    applyCrossover(parseFloat(crossoverSlider.value));
+  });
+
+  const driveSlider = document.getElementById('driveSlider');
+  const driveValue = document.getElementById('driveValue');
+  driveSlider.addEventListener('input', ()=>{ driveValue.textContent = driveSlider.value+'%'; ensureGraph(); applyDrive(parseFloat(driveSlider.value)); });
+
+  const ceilingSlider = document.getElementById('ceilingSlider');
+  const ceilingValue = document.getElementById('ceilingValue');
+  ceilingSlider.addEventListener('input', ()=>{ ceilingValue.textContent = ceilingSlider.value+'dB'; ensureGraph(); applyCeiling(parseFloat(ceilingSlider.value)); });
+
+  // ---------- macros ----------
+  document.getElementById('maxLoudBtn').addEventListener('click', ()=>{
+    ensureGraph();
+    gains = BANDS.map((f,i)=> f<=160 ? 20 - i*2 : (f>=5120 ? -3 : 2));
+    qs = BANDS.map(()=>0.7);
+    bassBoostOn = true; monoBassOn = true; limiterOn = true;
+    document.getElementById('bassToggle').classList.add('active');
+    document.getElementById('monoToggle').classList.add('active');
+    document.getElementById('limiterToggle').classList.add('active');
+    crossoverBlock.style.display = 'flex';
+    driveSlider.value = 320; driveValue.textContent='320%';
+    ceilingSlider.value = -0.5; ceilingValue.textContent='-0.5dB';
+    applyGains(); applyBass(); applyDrive(320); applyCeiling(-0.5); applyLimiterMode(); wireMonoStage();
+    drawEQ();
+  });
+
+  document.getElementById('streetBtn').addEventListener('click', ()=>{
+    ensureGraph();
+    gains = BANDS.map((f)=>{
+      if(f<=80) return 8;
+      if(f<=320) return 3;
+      if(f<=1280) return 6;
+      if(f<=5120) return 10;
+      return 6;
+    });
+    qs = BANDS.map(()=>1.2);
+    bassBoostOn = false; limiterOn = true;
+    document.getElementById('bassToggle').classList.remove('active');
+    document.getElementById('limiterToggle').classList.add('active');
+    driveSlider.value = 220; driveValue.textContent='220%';
+    ceilingSlider.value = -1; ceilingValue.textContent='-1dB';
+    applyGains(); applyBass(); applyDrive(220); applyCeiling(-1); applyLimiterMode();
+    drawEQ();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    gains = BANDS.map(()=>0); qs = BANDS.map(()=>1);
+    bassBoostOn=false; monoBassOn=false; limiterOn=true; selectedIndex=-1;
+    driveSlider.value=100; driveValue.textContent='100%';
+    ceilingSlider.value=-1; ceilingValue.textContent='-1dB';
+    document.getElementById('bassToggle').classList.remove('active');
+    document.getElementById('monoToggle').classList.remove('active');
+    document.getElementById('limiterToggle').classList.add('active');
+    crossoverBlock.style.display='none';
+    qSlider.disabled = true; qSlider.value=1; qValue.textContent='1.0';
+    bsLabel.textContent = 'Полоса: — тапни точку';
+    applyGains(); applyBass(); applyLimiterMode(); wireMonoStage();
+    if(driveGain) applyDrive(100);
+    if(limiterNode) applyCeiling(-1);
+    drawEQ();
+  });
+
+  // ---------- presets ----------
+  const presetSelect = document.getElementById('presetSelect');
+  const presetNameInput = document.getElementById('presetName');
+
+  async function refreshPresetList(){
+    presetSelect.innerHTML = '<option value="">— Presets —</option>';
+    try{
+      const res = await window.storage.list('preset:', false);
+      if(res && res.keys){
+        res.keys.forEach(k=>{
+          const name = k.slice('preset:'.length);
+          const opt = document.createElement('option'); opt.value=k; opt.textContent=name;
+          presetSelect.appendChild(opt);
+        });
+      }
+    }catch(e){}
+  }
+
+  document.getElementById('savePresetBtn').addEventListener('click', async ()=>{
+    const name = presetNameInput.value.trim(); if(!name) return;
+    const data = JSON.stringify({ gains, qs, bassBoostOn, monoBassOn, limiterOn, crossoverFreq, drive: driveSlider.value, ceiling: ceilingSlider.value });
+    try{ await window.storage.set('preset:'+name, data, false); presetNameInput.value=''; await refreshPresetList(); }catch(e){}
+  });
+
+  presetSelect.addEventListener('change', async ()=>{
+    const key = presetSelect.value; if(!key) return;
+    try{
+      const res = await window.storage.get(key, false);
+      if(res){
+        const data = JSON.parse(res.value);
+        gains = data.gains; qs = data.qs || BANDS.map(()=>1);
+        bassBoostOn = data.bassBoostOn; monoBassOn = data.monoBassOn||false; limiterOn = data.limiterOn!==false;
+        crossoverFreq = data.crossoverFreq || 120;
+        driveSlider.value = data.drive || 100; driveValue.textContent = driveSlider.value+'%';
+        ceilingSlider.value = data.ceiling!=null?data.ceiling:-1; ceilingValue.textContent = ceilingSlider.value+'dB';
+        crossoverSlider.value = crossoverFreq; crossoverValue.textContent = crossoverFreq+'Hz';
+        document.getElementById('bassToggle').classList.toggle('active', bassBoostOn);
+        document.getElementById('monoToggle').classList.toggle('active', monoBassOn);
+        document.getElementById('limiterToggle').classList.toggle('active', limiterOn);
+        crossoverBlock.style.display = monoBassOn ? 'flex' : 'none';
+        ensureGraph();
+        applyGains(); applyBass(); applyDrive(parseFloat(driveSlider.value)); applyCeiling(parseFloat(ceilingSlider.value));
+        applyLimiterMode(); applyCrossover(crossoverFreq); wireMonoStage();
+        drawEQ();
+      }
+    }catch(e){}
+  });
+
+  document.getElementById('deletePresetBtn').addEventListener('click', async ()=>{
+    const key = presetSelect.value; if(!key) return;
+    try{ await window.storage.delete(key, false); await refreshPresetList(); }catch(e){}
+  });
+
+  resizeCanvases();
+  drawEQ();
+  drawSpectrum();
+  refreshPresetList();
+})();
+</script>
+</body>
+</html>
